@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="MailHTML/MailHTML.csproj" />
+  <Project Path="MailHTMLTest/MailHTMLTest.csproj" />
+</Solution>
