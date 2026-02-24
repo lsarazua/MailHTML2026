@@ -1,11 +1,11 @@
-﻿using MailHTML.Modelos;
+﻿using MailHTML.Dominio.Modelos;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
 
-namespace MailHTML.Services
+namespace MailHTML.Renderizadores
 {
     public class SupportEmailTemplateRenderer
     {

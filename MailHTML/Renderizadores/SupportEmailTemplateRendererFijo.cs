@@ -1,26 +1,18 @@
-﻿
-using MailHTML.Modelos;
-using MailHTML.Services;
+﻿using MailHTML.Dominio.Modelos;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
 
-namespace MailHTML.Services
+namespace MailHTML.Renderizadores
 {
     public class SupportEmailTemplateRendererFijo
     {
-        private const decimal IvaRate = 0.16m;
         private static readonly CultureInfo CultureMx = new CultureInfo("es-MX");
 
-        // Altura fija de renglón (se mantiene igual en todas las hojas)
         private const decimal RowHeightIn = 0.32m;
 
-        // Regla: SIEMPRE 5 renglones por hoja
-        private const int RowsPerPage = 5;
-
-        // Layout (suman 10in siempre)
         private const decimal TopIn = 3.00m;
         private const decimal TableIn = 3.50m;
         private const decimal BottomIn = 3.50m;
@@ -28,25 +20,17 @@ namespace MailHTML.Services
         private const int TotRowsCount = 2;
         private const decimal TotRowHeightIn = 0.25m;
 
-        public string Render(SupportEmailModel model, int productRows)
+        public string Render(CotizacionRenderModel modelo)
         {
-            if (model == null) throw new ArgumentNullException(nameof(model));
-            if (productRows < 1) productRows = 1;
+            if (modelo == null) throw new ArgumentNullException(nameof(modelo));
 
-            var products = BuildFakeProducts(productRows);
-            return Render(model, products);
-        }
+            var encabezado = modelo.Encabezado ?? new CotizacionEncabezadoModel();
+            var partidas = modelo.Partidas ?? new List<CotizacionPartidaModel>();
+            var totales = modelo.Totales ?? new CotizacionTotalesModel();
+            var config = modelo.Configuracion ?? new CotizacionConfiguracionModel();
 
-        public string Render(SupportEmailModel model, IReadOnlyList<QuoteLine> products)
-        {
-            if (model == null) throw new ArgumentNullException(nameof(model));
-            products ??= Array.Empty<QuoteLine>();
-
-            var pages = BuildPages(products);
-
-            decimal subTotal = products.Sum(x => x.LineTotal);
-            decimal iva = RoundMoney(subTotal * IvaRate);
-            decimal total = RoundMoney(subTotal + iva);
+            int rowsPerPage = config.RenglonesPorHoja > 0 ? config.RenglonesPorHoja : 5;
+            var pages = BuildPages(partidas, rowsPerPage);
 
             int totalPages = pages.Count;
             var htmlPages = new StringBuilder();
@@ -58,15 +42,16 @@ namespace MailHTML.Services
 
                 string tbodyHtml = BuildTbodyHtml(
                     page.Items,
-                    RowsPerPage,
+                    rowsPerPage,
                     page.StartIndex,
                     isLast,
-                    iva,
-                    total
+                    totales.Iva,
+                    totales.Total
                 );
 
                 htmlPages.Append(BuildSinglePageHtml(
-                    model,
+                    encabezado,
+                    config,
                     tbodyHtml,
                     isLast,
                     TopIn,
@@ -83,34 +68,22 @@ namespace MailHTML.Services
         private sealed class PageDef
         {
             public int StartIndex { get; init; }
-            public List<QuoteLine> Items { get; init; } = new();
+            public List<CotizacionPartidaModel> Items { get; init; } = new List<CotizacionPartidaModel>();
         }
 
-        // ✅ Paginado fijo: bloques de 5
-        private static List<PageDef> BuildPages(IReadOnlyList<QuoteLine> products)
+        private static List<PageDef> BuildPages(IReadOnlyList<CotizacionPartidaModel> partidas, int rowsPerPage)
         {
             var result = new List<PageDef>();
-
-            int n = products?.Count ?? 0;
+            int n = partidas?.Count ?? 0;
 
             if (n == 0)
             {
-                result.Add(new PageDef
-                {
-                    StartIndex = 0,
-                    Items = new List<QuoteLine>()
-                });
+                result.Add(new PageDef { StartIndex = 0, Items = new List<CotizacionPartidaModel>() });
                 return result;
             }
 
-            for (int i = 0; i < n; i += RowsPerPage)
-            {
-                result.Add(new PageDef
-                {
-                    StartIndex = i,
-                    Items = products.Skip(i).Take(RowsPerPage).ToList()
-                });
-            }
+            for (int i = 0; i < n; i += rowsPerPage)
+                result.Add(new PageDef { StartIndex = i, Items = partidas.Skip(i).Take(rowsPerPage).ToList() });
 
             return result;
         }
@@ -388,7 +361,8 @@ namespace MailHTML.Services
         }
 
         private string BuildSinglePageHtml(
-            SupportEmailModel model,
+            CotizacionEncabezadoModel encabezado,
+            CotizacionConfiguracionModel config,
             string tbodyHtml,
             bool isLast,
             decimal topIn,
@@ -397,7 +371,11 @@ namespace MailHTML.Services
             int pageNo,
             int totalPages)
         {
-            string bottomHtml = BuildBottomBlockHtml(isLast);
+            string bottomHtml = BuildBottomBlockHtml(isLast, config);
+
+            string urlLogoPrincipal = string.IsNullOrWhiteSpace(config.UrlLogoPrincipal)
+                ? ""
+                : config.UrlLogoPrincipal;
 
             return $@"
 <div class=""page"">
@@ -405,22 +383,22 @@ namespace MailHTML.Services
 
     <div class=""top-block"">
       <div class=""header"">
-        <img src=""https://www.kangaroocrm.net/KangarooCrm/Logo_AllianceSFA.png"" alt=""Alliance"" />
+        {(string.IsNullOrWhiteSpace(urlLogoPrincipal) ? "" : $@"<img src=""{Html(urlLogoPrincipal)}"" alt=""Logo"" />")}
         <div class=""doc-title"">COTIZACIÓN</div>
       </div>
 
       <div class=""top-info"">
         <div class=""info"">
           <span class=""label"">Cotización para:</span>
-          <p>Nombre: {Html(model.CustomerName)}</p>
-          <p>Dirección: {Html(model.AddressId)}</p>
-          <p>Correo: {Html(model.RequesterName)}</p>
-          <p>Teléfono: {Html(model.RequesterEmployeeId.ToString())}</p>
+          <p>Nombre: {Html(encabezado.ClienteNombre)}</p>
+          <p>Dirección: {Html(encabezado.Direccion)}</p>
+          <p>Correo: {Html(encabezado.SolicitanteCorreo)}</p>
+          <p>Teléfono: {Html(encabezado.SolicitanteTelefono)}</p>
         </div>
 
         <div class=""quote-meta"">
-          <div>Fecha: {DateTime.Now:dd/MM/yyyy}</div>
-          <div>N. de cotización: {Html(model.CustomerId)}</div>
+          <div>Fecha: {encabezado.Fecha:dd/MM/yyyy}</div>
+          <div>N. de cotización: {Html(encabezado.CotizacionId)}</div>
           <div class=""page-no"">Página {pageNo} de {totalPages}</div>
         </div>
       </div>
@@ -470,48 +448,91 @@ namespace MailHTML.Services
 </div>";
         }
 
-        private string BuildBottomBlockHtml(bool isLast)
+        private string BuildBottomBlockHtml(bool isLast, CotizacionConfiguracionModel config)
         {
-            string terms = isLast
-                ? @"
+            if (!isLast) return "<div></div>";
+
+            var sb = new StringBuilder();
+
+            if (config?.Terminos?.Lineas?.Any() == true)
+            {
+                sb.Append(@"
 <div class=""section"">
   <h3>Término y condiciones:</h3>
-  <ul>
-    <li>La presente cotización tiene una vigencia de 15 días naturales.</li>
-    <li>Los precios están sujetos a cambios sin previo aviso.</li>
-    <li>El pedido se confirmará al recibir el pago o anticipo.</li>
+  <ul>");
+                foreach (var linea in config.Terminos.Lineas.Where(x => !string.IsNullOrWhiteSpace(x)))
+                    sb.Append("<li>" + Html(linea) + "</li>");
+                sb.Append(@"
   </ul>
-</div>
+</div>");
+            }
 
+            if (!string.IsNullOrWhiteSpace(config?.Pago?.Texto))
+            {
+                sb.Append(@"
 <div class=""section"" style=""margin-top:12px;"">
   <h3>Formas de pago:</h3>
-  <p>
-    <strong>BANCO</strong><br>
-    #000000000000<br>
-    Envíe el comprobante a: correodeenvio@kangaroo.mx
+  <p>");
+                var lineas = config.Pago.Texto.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
+                foreach (var l in lineas)
+                {
+                    if (string.IsNullOrWhiteSpace(l)) { sb.Append("<br>"); }
+                    else { sb.Append(Html(l) + "<br>"); }
+                }
+                sb.Append(@"
   </p>
-</div>"
-                : @"<div></div>";
+</div>");
+            }
 
-            string footer = @"
+            string footerHtml = BuildFooterHtml(config);
+            if (!string.IsNullOrWhiteSpace(footerHtml))
+                sb.Append(footerHtml);
+
+            return sb.ToString();
+        }
+
+        private static string BuildFooterHtml(CotizacionConfiguracionModel config)
+        {
+            if (config == null) return "";
+
+            if (!string.IsNullOrWhiteSpace(config.Footer?.FooterHtml))
+                return config.Footer.FooterHtml;
+
+            var f = config.Footer ?? new CotizacionFooterModel();
+
+            bool hasAny =
+                !string.IsNullOrWhiteSpace(f.Empresa) ||
+                !string.IsNullOrWhiteSpace(f.Linea1) ||
+                !string.IsNullOrWhiteSpace(f.Linea2) ||
+                !string.IsNullOrWhiteSpace(f.Linea3) ||
+                !string.IsNullOrWhiteSpace(f.Correo) ||
+                !string.IsNullOrWhiteSpace(f.Telefono) ||
+                !string.IsNullOrWhiteSpace(config.UrlLogoFooter);
+
+            if (!hasAny) return "";
+
+            string logo = string.IsNullOrWhiteSpace(config.UrlLogoFooter)
+                ? ""
+                : $@"<img src=""{Html(config.UrlLogoFooter)}"" alt=""Logo"" />";
+
+            return $@"
 <div class=""footer"">
   <div>
-    <strong>Farmacia Telefónica Peninsular</strong><br>
-    Calle 7 No. 532 x 22 y 24 Local 1<br>
-    Col. Maya CP 97134, Mérida Yuc.<br>
-    contacto@ftppeninsular.com<br>
-    (999) 196 0407
+    {(string.IsNullOrWhiteSpace(f.Empresa) ? "" : $"<strong>{Html(f.Empresa)}</strong><br>")}
+    {(string.IsNullOrWhiteSpace(f.Linea1) ? "" : Html(f.Linea1) + "<br>")}
+    {(string.IsNullOrWhiteSpace(f.Linea2) ? "" : Html(f.Linea2) + "<br>")}
+    {(string.IsNullOrWhiteSpace(f.Linea3) ? "" : Html(f.Linea3) + "<br>")}
+    {(string.IsNullOrWhiteSpace(f.Correo) ? "" : Html(f.Correo) + "<br>")}
+    {(string.IsNullOrWhiteSpace(f.Telefono) ? "" : Html(f.Telefono))}
   </div>
   <div>
-    <img src=""https://www.kangaroocrm.net/kangaroocrm/LOGO_KANGAROO_CRM.PNG"" alt=""Kangaroo"" />
+    {logo}
   </div>
 </div>";
-
-            return $@"{terms}{footer}";
         }
 
         private string BuildTbodyHtml(
-            List<QuoteLine> pageItems,
+            List<CotizacionPartidaModel> pageItems,
             int fixedRows,
             int startIndex,
             bool isLast,
@@ -540,18 +561,18 @@ namespace MailHTML.Services
                 }
                 else
                 {
-                    int num = startIndex + i + 1;
+                    int num = item.Numero > 0 ? item.Numero : (startIndex + i + 1);
 
                     sb.Append($@"
 <tr class=""row-fixed"">
   <td class=""nowrap"">{num}</td>
-  <td class=""col-producto""><span class=""producto-text"">{Html(item.ProductName)}</span></td>
-  <td class=""nowrap"">{item.Quantity:0.##}</td>
-  <td class=""nowrap"">{Html(item.Unit)}</td>
-  <td class=""nowrap"">{Money(item.UnitPrice)}</td>
-  <td class=""nowrap"">{item.DiscountPercent.ToString("0.##", CultureMx)}</td>
-  <td class=""nowrap"">{Money(item.UnitPriceAfterDiscount)}</td>
-  <td class=""nowrap"">{Money(item.LineTotal)}</td>
+  <td class=""col-producto""><span class=""producto-text"">{Html(item.ProductoNombre)}</span></td>
+  <td class=""nowrap"">{item.Cantidad:0.##}</td>
+  <td class=""nowrap"">{Html(item.Unidad)}</td>
+  <td class=""nowrap"">{Money(item.PrecioUnitario)}</td>
+  <td class=""nowrap"">{item.DescuentoPorcentaje.ToString("0.##", CultureMx)}</td>
+  <td class=""nowrap"">{Money(item.PrecioConDescuento)}</td>
+  <td class=""nowrap"">{Money(item.SubtotalLinea)}</td>
 </tr>");
                 }
             }
@@ -578,32 +599,6 @@ namespace MailHTML.Services
 
             return sb.ToString();
         }
-
-        private static List<QuoteLine> BuildFakeProducts(int count)
-        {
-            var list = new List<QuoteLine>(count);
-
-            for (int i = 1; i <= count; i++)
-            {
-                decimal qty = (i % 3) + 1;
-                decimal unitPrice = 125.50m + (i * 3.10m);
-                decimal discount = (i % 4) * 5m;
-
-                list.Add(new QuoteLine
-                {
-                    ProductName = $"Producto #{i} con descripción ejemplo para 2 renglones",
-                    Quantity = qty,
-                    Unit = "PZA",
-                    UnitPrice = unitPrice,
-                    DiscountPercent = discount
-                });
-            }
-
-            return list;
-        }
-
-        private static decimal RoundMoney(decimal value)
-            => Math.Round(value, 2, MidpointRounding.AwayFromZero);
 
         private static string Money(decimal value)
             => value.ToString("C2", CultureMx);
