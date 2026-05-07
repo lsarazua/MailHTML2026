@@ -28,7 +28,6 @@ namespace MailHTML.Database
 
         public DbSet<DbPingResult> DbPing { get; set; }
         public DbSet<LayoutMailModel> LayoutsMailWeb { get; set; }
-
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<LayoutMailModel>(entity =>

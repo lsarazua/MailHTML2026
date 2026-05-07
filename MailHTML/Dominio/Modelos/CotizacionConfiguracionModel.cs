@@ -3,10 +3,11 @@ using System.Collections.Generic;
 
 namespace MailHTML.Dominio.Modelos
 {
-
     public class CotizacionConfiguracionModel
     {
         public int RenglonesPorHoja { get; set; } = 5;
+
+        public string Mensaje { get; set; } = "";
 
         public CotizacionTerminosModel Terminos { get; set; } = new CotizacionTerminosModel();
         public CotizacionPagoModel Pago { get; set; } = new CotizacionPagoModel();

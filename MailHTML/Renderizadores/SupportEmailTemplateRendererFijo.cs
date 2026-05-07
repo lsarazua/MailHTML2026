@@ -17,7 +17,6 @@ namespace MailHTML.Renderizadores
         private const decimal TableIn = 3.50m;
         private const decimal BottomIn = 3.50m;
 
-        private const int TotRowsCount = 2;
         private const decimal TotRowHeightIn = 0.25m;
 
         public string Render(CotizacionRenderModel modelo)
@@ -40,26 +39,9 @@ namespace MailHTML.Renderizadores
                 var page = pages[pageIndex];
                 bool isLast = pageIndex == totalPages - 1;
 
-                string tbodyHtml = BuildTbodyHtml(
-                    page.Items,
-                    rowsPerPage,
-                    page.StartIndex,
-                    isLast,
-                    totales.Iva,
-                    totales.Total
-                );
+                string tbodyHtml = BuildTbodyHtml(page.Items, rowsPerPage, page.StartIndex, isLast, totales.Total);
 
-                htmlPages.Append(BuildSinglePageHtml(
-                    encabezado,
-                    config,
-                    tbodyHtml,
-                    isLast,
-                    TopIn,
-                    TableIn,
-                    BottomIn,
-                    pageIndex + 1,
-                    totalPages
-                ));
+                htmlPages.Append(BuildSinglePageHtml(encabezado, config, tbodyHtml, isLast, TopIn, TableIn, BottomIn, pageIndex + 1, totalPages));
             }
 
             return BuildDocument(htmlPages.ToString());
@@ -93,7 +75,7 @@ namespace MailHTML.Renderizadores
             string rowH = RowHeightIn.ToString(CultureInfo.InvariantCulture);
             string totH = TotRowHeightIn.ToString(CultureInfo.InvariantCulture);
 
-            return $@"
+            var html = @"
 <!DOCTYPE html>
 <html lang=""es"">
 <head>
@@ -102,26 +84,26 @@ namespace MailHTML.Renderizadores
 <title>Cotización</title>
 
 <style>
-    @page {{
+    @page {
         size: Letter;
         margin: 0;
-    }}
+    }
 
-    html, body {{
+    html, body {
         margin: 0;
         padding: 0;
         font-family: 'Montserrat', Arial, Helvetica, sans-serif;
         color: #1C1E21;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
-    }}
+    }
 
-    body {{
+    body {
         background: #f2f2f2;
         padding: 18px 0;
-    }}
+    }
 
-    .page {{
+    .page {
         width: 8.5in;
         height: 11in;
         margin: 0 auto 18px auto;
@@ -130,119 +112,122 @@ namespace MailHTML.Renderizadores
         padding: 0.5in;
         box-shadow: 0 8px 28px rgba(0,0,0,.12);
         page-break-after: always;
-    }}
+    }
 
-    .page:last-child {{
+    .page:last-child {
         page-break-after: auto;
         margin-bottom: 0;
-    }}
+    }
 
-    @media print {{
-        body {{
+    @media print {
+        body {
             background: #fff;
             padding: 0;
-        }}
-        .page {{
+        }
+        .page {
             margin: 0;
             box-shadow: none;
-        }}
-    }}
+        }
+    }
 
-    .page-grid {{
+    .page-grid {
         width: 7.5in;
         height: 10in;
         display: grid;
         grid-template-rows: var(--top) var(--table) var(--bottom);
         box-sizing: border-box;
-    }}
+    }
 
-    .top-block, .table-block, .bottom-block {{
+    .top-block, .table-block, .bottom-block {
         overflow: hidden;
-    }}
+    }
 
-    .bottom-block {{
+    .bottom-block {
         display: grid;
         grid-template-rows: 1fr auto;
-    }}
+    }
 
-    .header {{
-        text-align: center;
-        margin: 0;
-        padding: 0;
-    }}
+    .header {
+    text-align: center;
+    margin: 0;
+    padding: 0;
+    line-height: 1;
+    }
 
-    .header img {{
-        width: 210px;
-        height: auto;
-        display: inline-block;
-        margin-top: 2px;
-    }}
+    .header img {
+    max-width: 170px;
+    max-height: 55px;
+    height: auto;
+    width: auto;
+    display: block;
+    margin: 0 auto 4px auto;
+    }
 
-    .doc-title {{
+    .doc-title {
         margin-top: 6px;
         font-size: 22px;
         font-weight: 700;
         letter-spacing: 1px;
         color: #1C1E21;
-    }}
+    }
 
-    .top-info {{
+    .top-info {
         display: grid;
         grid-template-columns: 1fr 240px;
         gap: 14px;
         align-items: start;
         margin-top: 10px;
-    }}
+    }
 
-    .info {{
+    .info {
         font-size: 14px;
         color: #4A4D4F;
         line-height: 1.45;
-    }}
+    }
 
-    .info .label {{
+    .info .label {
         font-weight: 700;
         color: #1C1E21;
         margin-bottom: 6px;
         display: inline-block;
-    }}
+    }
 
-    .info p {{
+    .info p {
         margin: 2px 0;
-    }}
+    }
 
-    .quote-meta {{
+    .quote-meta {
         text-align: right;
         font-size: 14px;
         color: #4A4D4F;
         line-height: 1.6;
         white-space: nowrap;
         margin-top: 12px;
-    }}
+    }
 
-    .page-no {{
+    .page-no {
         font-size: 12px;
         color: #6B6F72;
         margin-top: 2px;
-    }}
+    }
 
-    .mensaje {{
+    .mensaje {
         font-size: 14px;
         color: #4A4D4F;
         margin: 10px 0 10px 0;
         line-height: 1.40;
-    }}
+    }
 
-    table {{
+    table {
         width: 100%;
         border-collapse: collapse;
         table-layout: fixed;
         font-size: 12px;
         color: #1C1E21;
         margin: 0;
-    }}
+    }
 
-    thead th {{
+    thead th {
         background: #C8C8C8;
         color: #1C1E21;
         font-weight: 700;
@@ -253,33 +238,40 @@ namespace MailHTML.Renderizadores
         overflow: hidden;
         font-size: 11px;
         line-height: 1.1;
-    }}
+    }
 
-    tbody td {{
+    th.th-piezas {
+        font-size: 10px;
+        letter-spacing: 0;
+        white-space: nowrap;
+        overflow: visible;
+    }
+
+    tbody td {
         border: 1px solid #9A9A9A;
         padding: 6px;
         text-align: center;
         vertical-align: middle;
         overflow: hidden;
         line-height: 1.1;
-        height: {rowH}in;
-    }}
+        height: __ROWH__in;
+    }
 
-    tr.row-fixed {{
-        height: {rowH}in;
-    }}
+    tr.row-fixed {
+        height: __ROWH__in;
+    }
 
-    td.nowrap {{
+    td.nowrap {
         white-space: nowrap;
         text-overflow: ellipsis;
-    }}
+    }
 
-    td.col-producto {{
+    td.col-producto {
         text-align: left;
         white-space: normal;
-    }}
+    }
 
-    .producto-text {{
+    .producto-text {
         display: block;
         width: 100%;
         overflow: hidden;
@@ -287,99 +279,87 @@ namespace MailHTML.Renderizadores
         display: -webkit-box;
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
-    }}
+    }
 
-    .tot-spacer td {{
-        border: 0 !important;
-        padding: 0 !important;
-        height: {totH}in !important;
-    }}
+    tr.total-row td {
+        height: __TOTH__in;
+        font-weight: 700;
+        background: #fff;
+    }
 
-    td.tot-empty {{
+    td.total-spacer {
         border: 0 !important;
         background: transparent !important;
-    }}
+        padding: 0 !important;
+    }
 
-    td.tot-label {{
-        background: #fff;
-        font-weight: 700;
+    td.total-label {
         text-align: center;
         border: 1px solid #9A9A9A !important;
         white-space: nowrap;
-        padding: 5px 6px !important;
-        height: {totH}in !important;
-    }}
+    }
 
-    td.tot-value {{
-        background: #fff;
+    td.total-value {
         text-align: right;
         border: 1px solid #9A9A9A !important;
         white-space: nowrap;
-        padding: 5px 10px !important;
-        height: {totH}in !important;
-    }}
+        padding-right: 10px !important;
+    }
 
-    .section {{
+    .section {
         font-size: 14px;
         color: #4A4D4F;
-    }}
+    }
 
-    .section h3 {{
+    .section h3 {
         margin: 0 0 8px 0;
         font-size: 14px;
         font-weight: 700;
         color: #1C1E21;
-    }}
+    }
 
-    .section ul {{
+    .section ul {
         padding-left: 18px;
         margin: 0;
-    }}
+    }
 
-    .footer {{
+    .footer {
         display: grid;
-        grid-template-columns: 1fr auto;
+        grid-template-columns: 1fr;
         gap: 18px;
         align-items: end;
         font-size: 13px;
         color: #4A4D4F;
-    }}
-
-    .footer img {{
-        height: 55px;
-        width: auto;
-        opacity: 0.18;
-        margin-bottom: -6px;
-    }}
+        margin-top: 10px;
+    }
 </style>
 </head>
 
 <body>
-{pagesHtml}
+__PAGES__
 </body>
 </html>";
+
+            return html.Replace("__ROWH__", rowH).Replace("__TOTH__", totH).Replace("__PAGES__", pagesHtml);
         }
 
-        private string BuildSinglePageHtml(
-            CotizacionEncabezadoModel encabezado,
-            CotizacionConfiguracionModel config,
-            string tbodyHtml,
-            bool isLast,
-            decimal topIn,
-            decimal tableIn,
-            decimal bottomIn,
-            int pageNo,
-            int totalPages)
+        private string BuildSinglePageHtml(CotizacionEncabezadoModel encabezado, CotizacionConfiguracionModel config, string tbodyHtml, bool isLast, decimal topIn, decimal tableIn, decimal bottomIn, int pageNo, int totalPages)
         {
             string bottomHtml = BuildBottomBlockHtml(isLast, config);
 
-            string urlLogoPrincipal = string.IsNullOrWhiteSpace(config.UrlLogoPrincipal)
-                ? ""
-                : config.UrlLogoPrincipal;
+            string urlLogoPrincipal = string.IsNullOrWhiteSpace(config.UrlLogoPrincipal) ? "" : config.UrlLogoPrincipal;
+
+            string top = topIn.ToString(CultureInfo.InvariantCulture);
+            string table = tableIn.ToString(CultureInfo.InvariantCulture);
+            string bottom = bottomIn.ToString(CultureInfo.InvariantCulture);
+
+            var mensaje = !string.IsNullOrWhiteSpace(config.Mensaje)
+                ? config.Mensaje
+                : "Gracias por solicitar esta cotización. Quedamos atentos a cualquier duda o comentario.";
 
             return $@"
 <div class=""page"">
-  <div class=""page-grid"" style=""--top:{topIn.ToString(CultureInfo.InvariantCulture)}in; --table:{tableIn.ToString(CultureInfo.InvariantCulture)}in; --bottom:{bottomIn.ToString(CultureInfo.InvariantCulture)}in;"">
+  <div class=""page-grid"" style=""--top:{top}in; --table:{table}in; --bottom:{bottom}in;"">
 
     <div class=""top-block"">
       <div class=""header"">
@@ -404,33 +384,29 @@ namespace MailHTML.Renderizadores
       </div>
 
       <div class=""mensaje"">
-        Gracias por solicitar esta cotización. Quedamos atentos a cualquier duda o comentario y será un gusto atenderle si el producto es de su interés.
+        {Html(mensaje)}
       </div>
     </div>
 
     <div class=""table-block"">
       <table>
         <colgroup>
-          <col style=""width: 6%;"">
-          <col style=""width: 31%;"">
-          <col style=""width: 7%;"">
-          <col style=""width: 7%;"">
-          <col style=""width: 12%;"">
-          <col style=""width: 12%;"">
-          <col style=""width: 12.5%;"">
-          <col style=""width: 12.5%;"">
+          <col style=""width: 33%;"">
+          <col style=""width: 10%;"">
+          <col style=""width: 14%;"">
+          <col style=""width: 13%;"">
+          <col style=""width: 15%;"">
+          <col style=""width: 15%;"">
         </colgroup>
 
         <thead>
           <tr>
-            <th>Num.</th>
             <th>Producto</th>
-            <th>Cant.</th>
-            <th>Und.</th>
-            <th>Precio Unit.</th>
-            <th>Descuento(%)</th>
-            <th>Precio Dcto.</th>
-            <th>Sub total</th>
+            <th>Cantidad</th>
+            <th>Precio unitario</th>
+            <th class=""th-piezas"">Piezas gratuitas</th>
+            <th>Monto descuento</th>
+            <th>Subtotal</th>
           </tr>
         </thead>
 
@@ -458,7 +434,7 @@ namespace MailHTML.Renderizadores
             {
                 sb.Append(@"
 <div class=""section"">
-  <h3>Término y condiciones:</h3>
+  <h3>Términos y condiciones:</h3>
   <ul>");
                 foreach (var linea in config.Terminos.Lineas.Where(x => !string.IsNullOrWhiteSpace(x)))
                     sb.Append("<li>" + Html(linea) + "</li>");
@@ -475,10 +451,7 @@ namespace MailHTML.Renderizadores
   <p>");
                 var lineas = config.Pago.Texto.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
                 foreach (var l in lineas)
-                {
-                    if (string.IsNullOrWhiteSpace(l)) { sb.Append("<br>"); }
-                    else { sb.Append(Html(l) + "<br>"); }
-                }
+                    sb.Append(string.IsNullOrWhiteSpace(l) ? "<br>" : Html(l) + "<br>");
                 sb.Append(@"
   </p>
 </div>");
@@ -506,14 +479,9 @@ namespace MailHTML.Renderizadores
                 !string.IsNullOrWhiteSpace(f.Linea2) ||
                 !string.IsNullOrWhiteSpace(f.Linea3) ||
                 !string.IsNullOrWhiteSpace(f.Correo) ||
-                !string.IsNullOrWhiteSpace(f.Telefono) ||
-                !string.IsNullOrWhiteSpace(config.UrlLogoFooter);
+                !string.IsNullOrWhiteSpace(f.Telefono);
 
             if (!hasAny) return "";
-
-            string logo = string.IsNullOrWhiteSpace(config.UrlLogoFooter)
-                ? ""
-                : $@"<img src=""{Html(config.UrlLogoFooter)}"" alt=""Logo"" />";
 
             return $@"
 <div class=""footer"">
@@ -525,19 +493,10 @@ namespace MailHTML.Renderizadores
     {(string.IsNullOrWhiteSpace(f.Correo) ? "" : Html(f.Correo) + "<br>")}
     {(string.IsNullOrWhiteSpace(f.Telefono) ? "" : Html(f.Telefono))}
   </div>
-  <div>
-    {logo}
-  </div>
 </div>";
         }
 
-        private string BuildTbodyHtml(
-            List<CotizacionPartidaModel> pageItems,
-            int fixedRows,
-            int startIndex,
-            bool isLast,
-            decimal iva,
-            decimal total)
+        private string BuildTbodyHtml(List<CotizacionPartidaModel> pageItems, int fixedRows, int startIndex, bool isLast, decimal totalGeneral)
         {
             var sb = new StringBuilder();
 
@@ -548,69 +507,47 @@ namespace MailHTML.Renderizadores
                 if (item == null)
                 {
                     sb.Append(@"
-<tr class=""row-fixed"">
-  <td>&nbsp;</td>
-  <td class=""col-producto""><span class=""producto-text"">&nbsp;</span></td>
-  <td>&nbsp;</td>
-  <td>&nbsp;</td>
-  <td class=""nowrap"">&nbsp;</td>
-  <td class=""nowrap"">&nbsp;</td>
-  <td class=""nowrap"">&nbsp;</td>
-  <td class=""nowrap"">&nbsp;</td>
-</tr>");
+                        <tr class=""row-fixed"">
+                          <td class=""col-producto""><span class=""producto-text"">&nbsp;</span></td>
+                          <td>&nbsp;</td>
+                          <td class=""nowrap"">&nbsp;</td>
+                          <td>&nbsp;</td>
+                          <td class=""nowrap"">&nbsp;</td>
+                          <td class=""nowrap"">&nbsp;</td>
+                        </tr>");
                 }
                 else
                 {
-                    int num = item.Numero > 0 ? item.Numero : (startIndex + i + 1);
-
                     sb.Append($@"
-<tr class=""row-fixed"">
-  <td class=""nowrap"">{num}</td>
-  <td class=""col-producto""><span class=""producto-text"">{Html(item.ProductoNombre)}</span></td>
-  <td class=""nowrap"">{item.Cantidad:0.##}</td>
-  <td class=""nowrap"">{Html(item.Unidad)}</td>
-  <td class=""nowrap"">{Money(item.PrecioUnitario)}</td>
-  <td class=""nowrap"">{item.DescuentoPorcentaje.ToString("0.##", CultureMx)}</td>
-  <td class=""nowrap"">{Money(item.PrecioConDescuento)}</td>
-  <td class=""nowrap"">{Money(item.SubtotalLinea)}</td>
-</tr>");
+                        <tr class=""row-fixed"">
+                          <td class=""col-producto""><span class=""producto-text"">{Html(item.ProductoNombre)}</span></td>
+                          <td class=""nowrap"">{item.Cantidad:0.##}</td>
+                          <td class=""nowrap"">{Money(item.PrecioUnitario)}</td>
+                          <td class=""nowrap"">{item.PiezasGratuitas}</td>
+                          <td class=""nowrap"">{Money(item.MontoDescuento)}</td>
+                          <td class=""nowrap"">{Money(item.SubtotalLinea)}</td>
+                        </tr>");
                 }
             }
 
             if (isLast)
             {
                 sb.Append($@"
-<tr>
-  <td class=""tot-empty"" colspan=""6""></td>
-  <td class=""tot-label"">IVA</td>
-  <td class=""tot-value"">{Money(iva)}</td>
-</tr>
-<tr>
-  <td class=""tot-empty"" colspan=""6""></td>
-  <td class=""tot-label"">Total:</td>
-  <td class=""tot-value"">{Money(total)}</td>
-</tr>");
-            }
-            else
-            {
-                for (int i = 0; i < TotRowsCount; i++)
-                    sb.Append(@"<tr class=""tot-spacer""><td colspan=""8"">&nbsp;</td></tr>");
+                <tr class=""total-row"">
+                  <td class=""total-spacer"" colspan=""4""></td>
+                  <td class=""total-label"">Total:</td>
+                  <td class=""total-value"">{Money(totalGeneral)}</td>
+                </tr>");
             }
 
             return sb.ToString();
         }
-
-        private static string Money(decimal value)
-            => value.ToString("C2", CultureMx);
+        private static string Money(decimal value) => value.ToString("C2", CultureMx);
 
         private static string Html(string value)
         {
             if (string.IsNullOrEmpty(value)) return string.Empty;
-            return value
-                .Replace("&", "&amp;")
-                .Replace("<", "&lt;")
-                .Replace(">", "&gt;")
-                .Replace("\"", "&quot;");
+            return value.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;").Replace("\"", "&quot;");
         }
     }
 }

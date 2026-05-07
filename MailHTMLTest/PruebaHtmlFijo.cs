@@ -33,7 +33,7 @@ namespace MailHTMLTest
             var directory = @"C:\temp";
             Directory.CreateDirectory(directory);
 
-            var filePath = Path.Combine(directory, $"Cotizacion23_02_2026_{productRows}.html");
+            var filePath = Path.Combine(directory, $"Cotizacion24_02_2026_{productRows}.html");
             File.WriteAllText(filePath, html);
 
             Assert.IsFalse(string.IsNullOrWhiteSpace(html));
